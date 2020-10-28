@@ -31,7 +31,7 @@ namespace AdvancedRunHistory
         // Just some constants
         public const string MOD_ID = "luc.mods.runfilters";
         public const string MOD_NAME = "Advanced Run History";
-        public const string MOD_VERSION = "1.0.0";
+        public const string MOD_VERSION = "1.0.1";
 
         private static ManualLogSource logger = BepInEx.Logging.Logger.CreateLogSource(MOD_NAME);
         public static FilterManager filterManager = new FilterManager();
@@ -64,7 +64,7 @@ namespace AdvancedRunHistory
     [HarmonyPatch(typeof(RunHistoryScreen), "Setup")]
     public class RunHistoryUIPatch
     {
-        public static void Postfix(ref RunHistoryScreen __instance)
+        public static void Postfix(ref RunHistoryScreen __instance, ref SaveManager saveManager)
         {
             // Add a few UI elements. TODO: Currenty, these are added directly to the screen. It might be nicer to add
             // them to the screen's content, but I'm too lazy for it right now.
@@ -75,7 +75,7 @@ namespace AdvancedRunHistory
             // If the Filter dialog has not yet been created, do so. Otherwise, reinitalize it.
             if (AdvancedRunHistory.filterDialog == null)
             {
-                AdvancedRunHistory.filterDialog = new RunFilterDialog(__instance, AdvancedRunHistory.filterManager);
+                AdvancedRunHistory.filterDialog = new RunFilterDialog(__instance, saveManager, AdvancedRunHistory.filterManager);
             } else
             {
                 AdvancedRunHistory.filterDialog.Reinit(__instance);
@@ -115,7 +115,6 @@ namespace AdvancedRunHistory
             }
             // "Apply Filters" toggle clicked: Toggle the filter manager's active state and re-fetch runs.
             if(triggeredMappingID == InputManager.Controls.Clicked && triggeredUI.IsGameUIComponent(AdvancedRunHistory.applyFiltersToggle)) {
-                AdvancedRunHistory.Log("Hi!");
                 AdvancedRunHistory.filterManager.Active = AdvancedRunHistory.applyFiltersToggle.Toggle();
                 UpdateHistoryUI(__instance);
                 return false;

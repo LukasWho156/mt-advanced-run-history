@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BepInEx.Logging;
+using System;
 using System.Collections.Generic;
 
 namespace AdvancedRunHistory.Filters
@@ -9,13 +10,8 @@ namespace AdvancedRunHistory.Filters
     /// </summary>
     class RunDataFilterClan : IRunDataFilter
     {
-        // Clan types
+        // Clan type ints are now created automatically, so no more consts.
         public const int CLAN_ANY = 0;
-        public const int CLAN_HELLHORNED = 1;
-        public const int CLAN_AWOKEN = 2;
-        public const int CLAN_STYGIAN = 3;
-        public const int CLAN_UMBRA = 4;
-        public const int CLAN_MELTING = 5;
 
         // Clan roles, i.e. primary, secondary or either
         public const int AS_PRIMARY = 0;
@@ -37,7 +33,7 @@ namespace AdvancedRunHistory.Filters
         /// <summary>
         /// Options for the clan dropdown menu.
         /// </summary>
-        public static readonly List<string> clanOptions = new List<String> { "Any", "Hellhorned", "Awoken", "Stygian", "Umbra", "Melting" };
+        public readonly List<string> clanOptions = new List<string> { "Any" };
         /// <summary>
         /// Options for the clan role menu.
         /// </summary>
@@ -48,15 +44,17 @@ namespace AdvancedRunHistory.Filters
         /// </summary>
         /// <param name="clan">Which clan to look for.</param>
         /// <param name="role">Which role it should play.</param>
-        public RunDataFilterClan(int clan = CLAN_ANY, int role = AS_ANY)
+        public RunDataFilterClan(SaveManager saveManager, int clan = CLAN_ANY, int role = AS_ANY)
         {
-            // I got these keys from printing them to the console. I sure hope they are generally applicable.
-            // There might also be a nicer way to find them in-game, but eh.
-            clanKeys.Add("c595c344-d323-4cf1-9ad6-41edc2aebbd0", CLAN_HELLHORNED);
-            clanKeys.Add("fd119fcf-c2cf-469e-8a5a-e9b0f265560d", CLAN_AWOKEN);
-            clanKeys.Add("9317cf9a-04ec-49da-be29-0e4ed61eb8ba", CLAN_STYGIAN);
-            clanKeys.Add("4fe56363-b1d9-46b7-9a09-bd2df1a5329f", CLAN_UMBRA);
-            clanKeys.Add("fda62ada-520e-42f3-aa88-e4a78549c4a2", CLAN_MELTING);
+            // Yeah, hard-coding ran into problems with custom clans. Let's do this properly.
+            List<ClassData> allClans = saveManager.GetAllGameData().GetAllClassDatas();
+            int i = 1;
+            foreach(ClassData data in allClans)
+            {
+                clanKeys.Add(data.GetID(), i);
+                clanOptions.Add(data.GetTitle().Split(' ')[0]);
+                i++;
+            }
             SetClan(clan);
             SetRole(role);
         }
@@ -86,15 +84,25 @@ namespace AdvancedRunHistory.Filters
             {
                 return true;
             }
-            // Otherwise check if the run has the specified clan in the specified role.
-            switch(Role)
+            // Otherwise, try to find both clan ids ...
+            int primary = 0; int secondary = 0;
+            if(!clanKeys.TryGetValue(runData.GetMainClassID(), out primary))
+            {
+                AdvancedRunHistory.Log("Can't find primary clan ID " + runData.GetMainClassID(), LogLevel.Warning);
+            }
+            if (!clanKeys.TryGetValue(runData.GetSubClassID(), out secondary))
+            {
+                AdvancedRunHistory.Log("Can't find secondary clan ID " + runData.GetSubClassID(), LogLevel.Warning);
+            }
+            // ... and check whether they are the desired ones.
+            switch (Role)
             {
                 case AS_ANY:
-                    return clanKeys[runData.GetMainClassID()] == Clan || clanKeys[runData.GetSubClassID()] == Clan;
+                    return primary == Clan || secondary == Clan;
                 case AS_PRIMARY:
-                    return clanKeys[runData.GetMainClassID()] == Clan;
+                    return primary == Clan;
                 case AS_SECONDARY:
-                    return clanKeys[runData.GetSubClassID()] == Clan;
+                    return secondary == Clan;
                 default:
                     return false;
             }

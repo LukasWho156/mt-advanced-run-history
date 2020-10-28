@@ -1,0 +1,10 @@
+﻿-----------
+ CHANGELOG
+-----------
+
+v 1.0.1:
+- Fixed crash when attempting to apply a clan filter with an unknown clan id.
+- Added support for custom clans.
+
+v 1.0.0
+- Initial release

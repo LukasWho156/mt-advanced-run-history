@@ -25,8 +25,9 @@ namespace AdvancedRunHistory
         private const int firstLine = 100;
         private const int columnWidth = 1130 - firstColumn * 2 - 250;
         private const int lineHeight = 70;
-        
+
         // Some needed things.
+        private SaveManager saveManager;
         private ScreenDialog dialog;
         private Component content;
         private FilterManager filterManager;
@@ -65,9 +66,11 @@ namespace AdvancedRunHistory
         /// </summary>
         /// <param name="parent">The container for this dialog. This probably doesn't need to be the RunHistoryScreen,
         /// but it seems reasonable to be. Should contain a child named "Content"</param>
+        /// <param name="saveManager">The main game's save manager.</param>
         /// <param name="filterManager">The filter manager. Should be empty when this constructor is called.</param>
-        public RunFilterDialog(RunHistoryScreen parent, FilterManager filterManager)
+        public RunFilterDialog(RunHistoryScreen parent, SaveManager saveManager, FilterManager filterManager)
         {
+            this.saveManager = saveManager;
             this.filterManager = filterManager;
             // (a little fail-safe to avoid duplicate filters in the filter manager if the constructor is called again)
             filterManager.Clear();
@@ -158,19 +161,19 @@ namespace AdvancedRunHistory
             // is ever set and not the other)
             if(clanFilter1 == null || clanFilter2 == null)
             {
-                clanFilter1 = new RunDataFilterClan(RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
+                clanFilter1 = new RunDataFilterClan(saveManager, RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
                 filterManager.AddFilter(clanFilter1);
-                clanFilter2 = new RunDataFilterClan(RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
+                clanFilter2 = new RunDataFilterClan(saveManager, RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
                 filterManager.AddFilter(clanFilter2);
             }
             // First clan: Choose the clan as well as the role it should play.
             clanRoleDropdown = CustomUIManager.AddDropdownToComponent(content, "ClanRoleDropdown", RunDataFilterClan.roleOptions, xOffset - 10, yOffset);
             CustomUIManager.AddLabelToComponent(content, "Clan:", xOffset + 260, yOffset, 100, 50);
-            clanDropdown1 = CustomUIManager.AddDropdownToComponent(content, "ClanDropdown1", RunDataFilterClan.clanOptions, xOffset + columnWidth, yOffset);
+            clanDropdown1 = CustomUIManager.AddDropdownToComponent(content, "ClanDropdown1", clanFilter1.clanOptions, xOffset + columnWidth, yOffset);
             // For the second clan, the role directly results from the first clan's role, so we can use a simple label.
             // However, we need to update that label accordingly if the first clan's role is changed, see below.
             secondClanLabel = CustomUIManager.AddLabelToComponent(content, "Secondary Clan:", xOffset, yOffset + 70, 350, 50);
-            clanDropdown2 = CustomUIManager.AddDropdownToComponent(content, "ClanDropdown1", RunDataFilterClan.clanOptions, xOffset + columnWidth, yOffset + lineHeight);
+            clanDropdown2 = CustomUIManager.AddDropdownToComponent(content, "ClanDropdown1", clanFilter2.clanOptions, xOffset + columnWidth, yOffset + lineHeight);
             // Add listeners.
             clanRoleDropdown.optionChosenSignal.AddListener(HandleClanRole);
             clanDropdown1.optionChosenSignal.AddListener(HandleClan1);
@@ -190,8 +193,8 @@ namespace AdvancedRunHistory
             // NOTE: 2 - clanFilter1.Role only works with the current constants. This will break if I ever change
             // how they work.
             secondClanLabel.text = RunDataFilterClan.roleOptions[2 - clanFilter1.Role] + " Clan:";
-            clanDropdown1.SetValue(RunDataFilterClan.clanOptions[clanFilter1.Clan]);
-            clanDropdown2.SetValue(RunDataFilterClan.clanOptions[clanFilter2.Clan]);
+            clanDropdown1.SetValue(clanFilter1.clanOptions[clanFilter1.Clan]);
+            clanDropdown2.SetValue(clanFilter2.clanOptions[clanFilter2.Clan]);
         }
 
         private void MakeProgressFilter(float xOffset, float yOffset)

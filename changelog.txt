@@ -2,6 +2,11 @@
  CHANGELOG
 -----------
 
+v 1.0.2 (lukewarm fix):
+- Restored base functionality.
+- Added some sanity checks.
+- Fixed small bug where the secondary clan filter wasn't initalized correctly.
+
 v 1.0.1:
 - Fixed crash when attempting to apply a clan filter with an unknown clan id.
 - Added support for custom clans.

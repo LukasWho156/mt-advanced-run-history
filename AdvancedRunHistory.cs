@@ -31,7 +31,7 @@ namespace AdvancedRunHistory
         // Just some constants
         public const string MOD_ID = "luc.mods.runfilters";
         public const string MOD_NAME = "Advanced Run History";
-        public const string MOD_VERSION = "1.0.1";
+        public const string MOD_VERSION = "1.0.2";
 
         private static ManualLogSource logger = BepInEx.Logging.Logger.CreateLogSource(MOD_NAME);
         public static FilterManager filterManager = new FilterManager();
@@ -66,19 +66,28 @@ namespace AdvancedRunHistory
     {
         public static void Postfix(ref RunHistoryScreen __instance, ref SaveManager saveManager)
         {
-            // Add a few UI elements. TODO: Currenty, these are added directly to the screen. It might be nicer to add
-            // them to the screen's content, but I'm too lazy for it right now.
-            CustomUIManager.AddLabelToComponent(__instance, "Apply Filters:", 170, 145, 200, 50);
-            AdvancedRunHistory.applyFiltersToggle = CustomUIManager.AddToggleToComponent(__instance, "ApplyFiltersToggle", 310, 146);
-            AdvancedRunHistory.applyFiltersToggle.isOn = AdvancedRunHistory.filterManager.Active;
-            AdvancedRunHistory.openFilterDialogButton = CustomUIManager.AddButtonToComponent(__instance, "OpenFilterScreenButton", "Edit Filters", 570, 140, 250, 60);
-            // If the Filter dialog has not yet been created, do so. Otherwise, reinitalize it.
-            if (AdvancedRunHistory.filterDialog == null)
+            // Only do this if the elements are actually usable
+            if(CustomUIManager.AreTemplatesUsable())
             {
-                AdvancedRunHistory.filterDialog = new RunFilterDialog(__instance, saveManager, AdvancedRunHistory.filterManager);
-            } else
+                // Add a few UI elements. TODO: Currenty, these are added directly to the screen. It might be nicer to add
+                // them to the screen's content, but I'm too lazy for it right now.
+                CustomUIManager.AddLabelToComponent(__instance, "Apply Filters:", 170, 145, 200, 50);
+                AdvancedRunHistory.applyFiltersToggle = CustomUIManager.AddToggleToComponent(__instance, "ApplyFiltersToggle", 310, 146);
+                AdvancedRunHistory.applyFiltersToggle.isOn = AdvancedRunHistory.filterManager.Active;
+                AdvancedRunHistory.openFilterDialogButton = CustomUIManager.AddButtonToComponent(__instance, "OpenFilterScreenButton", "Edit Filters", 570, 140, 250, 60);
+                // If the Filter dialog has not yet been created, do so. Otherwise, reinitalize it.
+                if (AdvancedRunHistory.filterDialog == null)
+                {
+                    AdvancedRunHistory.filterDialog = new RunFilterDialog(__instance, saveManager, AdvancedRunHistory.filterManager);
+                }
+                else
+                {
+                    AdvancedRunHistory.filterDialog.Reinit(__instance);
+                }
+            }
+            else
             {
-                AdvancedRunHistory.filterDialog.Reinit(__instance);
+                AdvancedRunHistory.Log("At least one UI template has not been initalized successfully", LogLevel.Error);
             }
         }
     }
@@ -92,29 +101,36 @@ namespace AdvancedRunHistory
     {
         public static bool Prefix(ref RunHistoryScreen __instance, ref bool __result, ref CoreInputControlMapping mapping, ref IGameUIComponent triggeredUI, ref InputManager.Controls triggeredMappingID)
         {
+            // If the filter dialog is null, abort.
+            if(AdvancedRunHistory.filterDialog == null)
+            {
+                AdvancedRunHistory.Log("Filter dialog does not seem to have initalized successfully.", LogLevel.Warning);
+                return true;
+            }
             // If the filter dialog is open, handle it first.
             if(AdvancedRunHistory.filterDialog.IsActive())
             {
                 if(AdvancedRunHistory.filterDialog.ApplyScreenInput(mapping, triggeredUI, triggeredMappingID))
                 {
-                    // If one of the filters was changed, re-fetch runs.
-                    if(AdvancedRunHistory.filterDialog.WasUpdated() && AdvancedRunHistory.filterManager.Active)
-                    {
-                        UpdateHistoryUI(__instance);
-                    }
                     __result = true;
+                }
+                // If one of the filters was changed, re-fetch runs.
+                if (AdvancedRunHistory.filterDialog.WasUpdated() && AdvancedRunHistory.filterManager.Active)
+                {
+                    UpdateHistoryUI(__instance);
                 }
                 return false;
             }
             // "Edit Filters" button clicked: Open the filter dialog.
-            if (triggeredMappingID == InputManager.Controls.Clicked && triggeredUI.IsGameUIComponent(AdvancedRunHistory.openFilterDialogButton))
+            if(AdvancedRunHistory.openFilterDialogButton.TryTrigger(triggeredUI, triggeredMappingID))
             {
                 AdvancedRunHistory.filterDialog.Open();
                 __result = true;
                 return false;
             }
             // "Apply Filters" toggle clicked: Toggle the filter manager's active state and re-fetch runs.
-            if(triggeredMappingID == InputManager.Controls.Clicked && triggeredUI.IsGameUIComponent(AdvancedRunHistory.applyFiltersToggle)) {
+            if(AdvancedRunHistory.applyFiltersToggle.TryTrigger(triggeredUI, triggeredMappingID))
+            {
                 AdvancedRunHistory.filterManager.Active = AdvancedRunHistory.applyFiltersToggle.Toggle();
                 UpdateHistoryUI(__instance);
                 return false;

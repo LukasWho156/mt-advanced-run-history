@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using BepInEx.Logging;
+using HarmonyLib;
 using ShinyShoe;
 using System.Collections.Generic;
 using TMPro;
@@ -44,7 +45,7 @@ namespace AdvancedRunHistory.CustomUIStuff
         private static GameUISelectableButton buttonTemplate;
         private static GameUISelectableDropdown dropdownTemplate;
         private static GameUISelectableToggle toggleTemplate;
-        private static GameUISelectableSlider sliderTemplate;
+        private static SelectableSliderHelper sliderTemplate;
         private static TextMeshProUGUI labelTemplate;
         private static ScreenDialog dialogTemplate;
 
@@ -59,6 +60,15 @@ namespace AdvancedRunHistory.CustomUIStuff
         public static bool AreTemplatesInitalized()
         {
             return initalized;
+        }
+
+        /// <summary>
+        /// Quick check to verify the templates have actually been successfully initalized.
+        /// </summary>
+        /// <returns><c>false</c> if any templates are null, otherwise <c>true</c></returns>
+        public static bool AreTemplatesUsable()
+        {
+            return (buttonTemplate != null && dropdownTemplate != null && sliderTemplate != null && toggleTemplate != null && labelTemplate != null && dialogTemplate != null);
         }
 
         /// <summary>
@@ -88,14 +98,41 @@ namespace AdvancedRunHistory.CustomUIStuff
                 buttonTemplate = Traverse.Create(settingsDialog).Field("keyMappingButton").GetValue<GameUISelectableButton>();
                 dropdownTemplate = Traverse.Create(settingsDialog).Field("gameSpeedDropdown").GetValue<GameUISelectableDropdown>(); ;
                 toggleTemplate = Traverse.Create(settingsDialog).Field("googlyEyesToggle").GetValue<GameUISelectableToggle>();
-                sliderTemplate = Traverse.Create(Traverse.Create(settingsDialog).Field("scrollSensitivityControl").GetValue<ScrollSensitivityControl>()).Field("slider").GetValue<GameUISelectableSlider>();
-                labelTemplate = settingsDialog.transform.Find("Content/Columns/Column 1/Audio Section/Global volume control").GetComponentInChildren<TextMeshProUGUI>();
+                sliderTemplate = Traverse.Create(Traverse.Create(settingsDialog).Field("scrollSensitivityControl").GetValue<ScrollSensitivityControl>()).Field("slider").GetValue<SelectableSliderHelper>();
+                // There don't seem to be any labels that are assigned to explicit fields, which kinda makes sense, so we'll have to search for one.
+                // This unfortunately breaks pretty easily as shown by the latest update of the game, so I guess we need a long term solution.
+                labelTemplate = settingsDialog.transform.Find("Content/Content/Audio Section/Global volume control").GetComponentInChildren<TextMeshProUGUI>();
+                // Print warnings if any initalization has been unsuccessful.
+                if (buttonTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Button template is null.", LogLevel.Warning);
+                }
+                if (dropdownTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Dropdown template is null.", LogLevel.Warning);
+                }
+                if (toggleTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Toggle template is null.", LogLevel.Warning);
+                }
+                if (sliderTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Slider template is null.", LogLevel.Warning);
+                }
+                if (labelTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Label template is null.", LogLevel.Warning);
+                }
                 // We actually neeed to instantiate a copy of the dialog template right now, as the Patch Notes dialog will
                 // unload as soon as you leave the Main Menu screen. Also, we can remove its contents while we're at it.
                 dialogTemplate = GameObject.Instantiate(dialog, settingsScreen.transform);
                 foreach(Transform child in dialogTemplate.transform.Find("Content"))
                 {
                     GameObject.Destroy(child.gameObject);
+                }
+                if (dialogTemplate == null)
+                {
+                    AdvancedRunHistory.Log("Dialog template is null.", LogLevel.Warning);
                 }
             }
         }
@@ -224,9 +261,9 @@ namespace AdvancedRunHistory.CustomUIStuff
         /// <param name="y">The y-position of the slider, relative to the container's upper left corner.</param>
         /// <param name="width">The width of the slider. Note that this includes the label at the side.</param>
         /// <returns>The created slider.</returns>
-        public static GameUISelectableSlider AddSliderToComponent(Component parent, string name, int value, int min, int max, float x, float y, float width)
+        public static SelectableSliderHelper AddSliderToComponent(Component parent, string name, int value, int min, int max, float x, float y, float width)
         {
-            GameUISelectableSlider slider = GameObject.Instantiate(sliderTemplate, parent.transform);
+            SelectableSliderHelper slider = GameObject.Instantiate(sliderTemplate, parent.transform);
             slider.Set(value, min, max);
             (slider.transform as RectTransform).anchorMin = new Vector2(0, 1);
             (slider.transform as RectTransform).anchorMax = new Vector2(0, 1);

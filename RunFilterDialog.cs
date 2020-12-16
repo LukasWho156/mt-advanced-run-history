@@ -37,7 +37,7 @@ namespace AdvancedRunHistory
 
         // Keep a list of dropdowns and sliders to make calling their ApplyScreenInputs easier.
         private List<GameUISelectableDropdown> dropdowns;
-        private List<GameUISelectableSlider> sliders;
+        private List<SelectableSliderHelper> sliders;
 
         // A lot of filters and corresponding UI elements.
         private RunDataFilterOutcome outcomeFilter;
@@ -47,12 +47,12 @@ namespace AdvancedRunHistory
         private GameUISelectableDropdown runTypeFilterDropdown;
 
         private RunDataFilterCovenant covenantFilter;
-        private GameUISelectableSlider covenantMinSlider;
-        private GameUISelectableSlider covenantMaxSlider;
+        private SelectableSliderHelper covenantMinSlider;
+        private SelectableSliderHelper covenantMaxSlider;
 
         private RunDataFilterProgress progressFilter;
-        private GameUISelectableSlider progressMinSlider;
-        private GameUISelectableSlider progressMaxSlider;
+        private SelectableSliderHelper progressMinSlider;
+        private SelectableSliderHelper progressMaxSlider;
 
         private RunDataFilterClan clanFilter1;
         private RunDataFilterClan clanFilter2;
@@ -87,7 +87,7 @@ namespace AdvancedRunHistory
             this.dialog = CustomUIManager.CreateCustomDialog(parent, "FilterDialog", "Run Data Filters");
             content = dialog.transform.Find("Content");
             dropdowns = new List<GameUISelectableDropdown>();
-            sliders = new List<GameUISelectableSlider>();
+            sliders = new List<SelectableSliderHelper>();
             MakeOutcomeFilter(firstColumn, firstLine);
             MakeRunTypeFilter(firstColumn, firstLine + lineHeight);
             MakeCovenantFilter(firstColumn, firstLine + lineHeight * 2);
@@ -138,8 +138,8 @@ namespace AdvancedRunHistory
             CustomUIManager.AddLabelToComponent(content, "Max Covenant:", xOffset, yOffset + 70, 240, 50);
             covenantMinSlider = CustomUIManager.AddSliderToComponent(content, "MinCovenantSlider", 0, 0, 25, xOffset + columnWidth, yOffset, 240);
             covenantMaxSlider = CustomUIManager.AddSliderToComponent(content, "MaxCovenantSlider", 25, 0, 25, xOffset + columnWidth, yOffset + lineHeight, 240);
-            covenantMinSlider.ValueSetSignal.AddListener(HandleMinCovenant);
-            covenantMaxSlider.ValueSetSignal.AddListener(HandleMaxCovenant);
+            covenantMinSlider.ValueChangedSignal.AddListener(HandleMinCovenant);
+            covenantMaxSlider.ValueChangedSignal.AddListener(HandleMaxCovenant);
             UpdateCovenantFilter();
             sliders.Add(covenantMinSlider);
             sliders.Add(covenantMaxSlider);
@@ -163,7 +163,7 @@ namespace AdvancedRunHistory
             {
                 clanFilter1 = new RunDataFilterClan(saveManager, RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
                 filterManager.AddFilter(clanFilter1);
-                clanFilter2 = new RunDataFilterClan(saveManager, RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_PRIMARY);
+                clanFilter2 = new RunDataFilterClan(saveManager, RunDataFilterClan.CLAN_ANY, RunDataFilterClan.AS_SECONDARY);
                 filterManager.AddFilter(clanFilter2);
             }
             // First clan: Choose the clan as well as the role it should play.
@@ -208,8 +208,8 @@ namespace AdvancedRunHistory
             CustomUIManager.AddLabelToComponent(content, "Max Ring:", xOffset, yOffset + 70, 240, 50);
             progressMinSlider = CustomUIManager.AddSliderToComponent(content, "MinProgressSlider", 0, 0, 25, xOffset + columnWidth, yOffset, 240);
             progressMaxSlider = CustomUIManager.AddSliderToComponent(content, "MaxProgressSlider", 25, 0, 25, xOffset + columnWidth, yOffset + lineHeight, 240);
-            progressMinSlider.ValueSetSignal.AddListener(HandleMinProgress);
-            progressMaxSlider.ValueSetSignal.AddListener(HandleMaxProgress);
+            progressMinSlider.ValueChangedSignal.AddListener(HandleMinProgress);
+            progressMaxSlider.ValueChangedSignal.AddListener(HandleMaxProgress);
             UpdateProgressFilter();
             sliders.Add(progressMinSlider);
             sliders.Add(progressMaxSlider);
@@ -336,14 +336,15 @@ namespace AdvancedRunHistory
             // Evaluate all dropdown menus.
             foreach(GameUISelectableDropdown dropdown in dropdowns)
             {
-                if(dropdown.TryClose(triggeredUI, triggeredMappingID) || dropdown.ApplyScreenInput(mapping, triggeredUI, triggeredMappingID))
+                if(dropdown.TryClose(mapping, triggeredUI) || dropdown.ApplyScreenInput(mapping, triggeredUI, triggeredMappingID))
                 {
                     return true;
                 }
             }
             // Evaluate all sliders.
-            foreach (GameUISelectableSlider slider in sliders)
+            foreach (SelectableSliderHelper slider in sliders)
             {
+                // For some reason, this never seems to trigger at the moment. No idea why.
                 if (slider.ApplyScreenInput(mapping, triggeredUI, triggeredMappingID))
                 {
                     return true;
